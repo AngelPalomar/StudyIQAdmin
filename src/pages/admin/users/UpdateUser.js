@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, Redirect } from 'react-router-dom'
+import GoogleMap from 'google-map-react'
 import {
     Grid, InputLabel, FormControlLabel, FormControl, TextField, Switch, Select, MenuItem,
     Typography, Button, CircularProgress
@@ -16,12 +17,13 @@ import { minLengthValidation, emailValidation } from '../../../helpers/validatio
 import { get_error } from '../../../helpers/errors_es_mx'
 
 /**APIs */
-import { getPaises } from '../../../api/paises'
+import { getPaises, getPaisByNombre } from '../../../api/paises'
 
 /**Icons */
 import CloseIcon from '@material-ui/icons/Close'
 import SaveIcon from '@material-ui/icons/Save'
 import DeleteIcon from '@material-ui/icons/Delete'
+import Marker from '../../../components/Marker'
 
 function UpdateUser(props) {
     //Traigo el id de la URL
@@ -40,6 +42,13 @@ function UpdateUser(props) {
     const [openNotification, setOpenNotification] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [wasUpdated, setWasUpdated] = useState(false)
+    const [notFound, setNotFound] = useState(false)
+
+    //Estados para el mapa
+    const [center, setCenter] = useState({
+        lat: 0,
+        lng: 0
+    })
 
     //trae lista de paises y la info del usuario
     useEffect(() => {
@@ -48,14 +57,14 @@ function UpdateUser(props) {
             if (doc.exists) {
                 setInputs({
                     ...doc.data(),
+                    oldEmail: doc.data().email,
                     oldPin: doc.data().pin,
                     pin: '',
                     pin2: ''
                 })
             } else {
-                setOpenSnack(true)
-                setSeverity('error')
-                setMessage("Documento no existente")
+                //Redirige al principio si no encuentra
+                setNotFound(true)
             }
         })
 
@@ -64,6 +73,21 @@ function UpdateUser(props) {
             setPaises(response)
         })
     }, [])
+
+    //Efecto que reacciona al pais seleccionado
+    useEffect(() => {
+        if (typeof inputs.pais !== "undefined") {
+            getPaisByNombre(inputs.pais).then(response => {
+                const { latlng } = response[0]
+                setCenter({ ...center, lat: latlng[0], lng: latlng[1] })
+            }).catch(() => {
+                setOpenSnack(true)
+                setSeverity('info')
+                setMessage("País no encontrado")
+                setCenter({ ...center, lat: 0, lng: 0 })
+            })
+        }
+    }, [inputs.pais])
 
     //Función para guardar datos en el estado
     const changeValues = (e) => {
@@ -161,12 +185,20 @@ function UpdateUser(props) {
 
         //Actualiza los datos en Firestore
         try {
-            /**
-             * TODO: Actualizar el usuario en el auth
-             * (email, pin, activo)
-             */
+            //Inicia sesión con el usuario
+            let usuarioAuth = await firebase.auth.signInWithEmailAndPassword(
+                inputs.oldEmail,
+                inputs.oldPin
+            )
 
+            //Actualiza el email, pin
+            usuarioAuth.user.updateEmail(inputs.email)
+            usuarioAuth.user.updatePassword(inputs.pin)
+
+            //Actualiza documento
             userDoc.update(newUserData)
+
+            //Muestra mensaje
             setOpenSnack(true)
             setSeverity('success')
             setMessage('Usuario modificado correctamente')
@@ -183,7 +215,7 @@ function UpdateUser(props) {
     }
 
     //Función para eliminar el documento
-    const deleteUser = () => {
+    const deleteUser = async () => {
 
         //Cierra noti
         setOpenNotification(false)
@@ -192,25 +224,37 @@ function UpdateUser(props) {
         setIsLoading(true)
 
         try {
-            /**
-             * TODO: Eliminar la cuenta en el auth del usuario
-             */
+            //Inicia sesión con el usuario
+            let usuarioAuth = await firebase.auth.signInWithEmailAndPassword(
+                inputs.oldEmail,
+                inputs.oldPin
+            )
+
+            //Elimina el usuario
+            usuarioAuth.user.delete()
 
             //Elimina el documento
-            userDoc.delete(id).then(() => {
-                setOpenSnack(true)
-                setSeverity('success')
-                setMessage("Usuario eliminado correctamente")
-                setTimeout(() => {
-                    setWasUpdated(true)
-                }, 500);
-            })
+            userDoc.delete(id)
+
+            //Muestra mensaje
+            setOpenSnack(true)
+            setSeverity('success')
+            setMessage("Usuario eliminado correctamente")
+            setTimeout(() => {
+                setWasUpdated(true)
+            }, 500);
+
         } catch (error) {
             setIsLoading(false)
             setOpenSnack(true)
             setSeverity('error')
             setMessage(get_error(error.code))
         }
+    }
+
+    //Si no encuentra doc
+    if (notFound) {
+        return <Redirect to="/admin/usuarios" />
     }
 
     //Si no se ha seleccionado ningun id
@@ -371,6 +415,7 @@ function UpdateUser(props) {
                                     style={{ width: '100%' }}
                                     variant="contained"
                                     startIcon={<DeleteIcon />}
+                                    disabled={isLoading}
                                     onClick={() => setOpenNotification(true)}>
                                     Eliminar usuario
                                 </Button>
@@ -411,6 +456,26 @@ function UpdateUser(props) {
                     }
 
                 </div>
+            </div>
+            <div style={{
+                height: '400px',
+                width: '100%',
+                marginBlock: 20
+            }}>
+                <GoogleMap
+                    bootstrapURLKeys={{
+                        key: 'AIzaSyDu9upVa3rGN8yO2jBaoj8ZvPIXXxqqMR0',
+                        language: 'es',
+                        region: 'mx',
+                        libraries: ['places']
+                    }}
+                    draggable={true}
+                    center={center}
+                    defaultZoom={5}>
+                    <Marker
+                        lat={center.lat}
+                        lng={center.lng} />
+                </GoogleMap>
             </div>
         </>
     )

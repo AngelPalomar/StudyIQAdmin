@@ -7,8 +7,12 @@ export function get_error(tipo) {
         case 'auth/user-not-found':
             return 'Usuario no encontrado';
         case 'auth/wrong-password':
-            return 'contraseña incorrecta';
+            return 'Contraseña incorrecta';
+        case 'auth/user-disabled':
+            return 'Esta cuenta ha sido inhabilitada por un administrador'
+        case 'auth/too-many-requests':
+            return 'Demasiados intentos, vuelva más tarde'
         default:
-            return 'Ocurrió un error';
+            return tipo;
     }
 }

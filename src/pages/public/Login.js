@@ -12,18 +12,21 @@ import Snackbar from '../../components/CustomSnackbar'
 import { emailValidation } from '../../helpers/validations'
 import { get_error } from '../../helpers/errors_es_mx'
 
+/**APIs */
+import { login, getUserUniqueId } from '../../api/user'
+
 function Login() {
     const classes = useStyles()
 
     //Inicia sesión
     let usuario = null
+    let usuarioDoc = null
 
     //Estado para el loading
     const [isLoading, setIsLoading] = useState(false)
 
     //Estados que redirigen
     const [wasLogged, setWasLogged] = useState(false)
-    const [isLogin, setIsLogin] = useState(false)
 
     //Estado para las credenciales
     const [inputs, setInputs] = useState({
@@ -44,7 +47,8 @@ function Login() {
     }
 
     //Función para uniciar sesión
-    const login = async () => {
+    const loginUser = async (e) => {
+        e.preventDefault()
 
         //Validaciones
         if (inputs.email === '' || inputs.pin === '') {
@@ -70,8 +74,41 @@ function Login() {
                 inputs.pin
             )
 
-            //Redirige al panel
-            setWasLogged(true)
+            //Busca su usuario en firebase
+            usuarioDoc = await firebase.db.collection('usuarios')
+                .where('authId', '==', `${usuario.user.uid}`)
+
+            usuarioDoc.get().then(query => {
+                query.forEach((doc => {
+                    if (doc.exists) {
+                        //Verifica que el usuario sea administrador y que esté activo
+                        if (doc.data().tipoUsuario !== "Administrador") {
+                            //Muestra mensaje de error
+                            setIsLoading(false)
+                            setOpenSnack(true)
+                            setMessage("Usuario no disponible")
+                        } else {
+                            //Si no está activo
+                            if (!doc.data().activo) {
+                                //Muestra mensaje de error
+                                setIsLoading(false)
+                                setOpenSnack(true)
+                                setMessage("Usuario no disponible")
+                            } else {
+                                //Guarda el auth id en el local storage
+                                login(usuario.user.uid, usuario.user.email)
+
+                                //Redirige al panel
+                                setWasLogged(true)
+                            }
+                        }
+                    } else {
+                        //Muestra mensaje de error
+                        setOpenSnack(true)
+                        setMessage("Ocurrió un error.")
+                    }
+                }))
+            })
 
         } catch (error) {
             //Para carga
@@ -81,6 +118,10 @@ function Login() {
             setOpenSnack(true)
             setMessage(get_error(error.code))
         }
+    }
+
+    if (getUserUniqueId()) {
+        return <Redirect to="/admin" />
     }
 
     //Si se inició sesión, se envía al panel
@@ -98,7 +139,7 @@ function Login() {
                 <Paper className={classes.paper}>
                     <Typography className={classes.title}>Iniciar sesión</Typography>
                     <Typography>* Todos los campos son requeridos</Typography>
-                    <form onChange={changeValues} className={classes.formContainer}>
+                    <form onSubmit={loginUser} onChange={changeValues} className={classes.formContainer}>
                         <TextField
                             name="email"
                             label="Correo electrónico"
@@ -115,7 +156,7 @@ function Login() {
                         <div className={classes.buttonContainer}>
                             {
                                 !isLoading ?
-                                    <Button onClick={login} variant="contained" color="primary">
+                                    <Button type="submit" variant="contained" color="primary">
                                         Ingresar
                                     </Button> :
                                     <CircularProgress color="secondary" />

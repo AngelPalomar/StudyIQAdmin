@@ -5,8 +5,12 @@ import {
 } from '@material-ui/core'
 import { useStyles } from './useStyles'
 
+/**APIs */
+import { logout, getUserEmail } from '../../api/user'
+
 /**Iconos */
 import MenuIcon from '@material-ui/icons/Menu'
+import PowerSettingsNewIcon from '@material-ui/icons/PowerSettingsNew'
 
 function Header(props) {
     const classes = useStyles()
@@ -21,7 +25,21 @@ function Header(props) {
                 <Container>
                     <Typography variant="h6">Panel de administración</Typography>
                 </Container>
-                <Button color="inherit">Salir</Button>
+                <Typography>{getUserEmail()}</Typography>
+                <Button
+                    color="inherit"
+                    style={{
+                        marginInline: 10,
+                        paddingInline: 20
+                    }}
+                    startIcon={<PowerSettingsNewIcon />}
+                    onClick={() => {
+                        //Cierra sesión
+                        logout()
+
+                        //Redirige al inicio
+                        window.location.href = '/'
+                    }}>Salir</Button>
             </Toolbar>
         </AppBar>
     )

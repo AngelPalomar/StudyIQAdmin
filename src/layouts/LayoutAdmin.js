@@ -7,6 +7,9 @@ import { useStyles } from './useStyles'
 import DrawerMenu from '../components/menu/DrawerMenu'
 import Header from '../components/menu/Header'
 
+/**APIs */
+import { getUserUniqueId } from '../api/user'
+
 function LayoutAdmin(props) {
     const classes = useStyles()
     const { routes, match: { path } } = props
@@ -15,6 +18,11 @@ function LayoutAdmin(props) {
     /**Menu lateral */
     const OpenAction = () => {
         setOpen(!open)
+    }
+
+    //Si la sesión no está iniciado, redirige al login
+    if (!getUserUniqueId()) {
+        return <Redirect to="/" />
     }
 
     return (
