@@ -3,6 +3,7 @@ import { Redirect } from 'react-router-dom'
 import { Paper, Typography, TextField, Button, CircularProgress } from '@material-ui/core'
 import { useStyles } from './useStyles'
 import firebase from '../../database/firebase'
+import firebase2 from 'firebase'
 
 /**Componenet */
 import PublicHeader from '../../components/PublicHeader'
@@ -15,15 +16,22 @@ import { get_error } from '../../helpers/errors_es_mx'
 /**APIs */
 import { login, getUserUniqueId } from '../../api/user'
 
+//Iconos
+import PersonIcon from '@material-ui/icons/Person'
+import FacebookIcon from '@material-ui/icons/Facebook'
+
+//Imagenes
+import googleIcon from '../../assets/google-logo.png'
+
 function Login() {
     const classes = useStyles()
 
     //Inicia sesión
     let usuario = null
-    let usuarioDoc = null
 
     //Estado para el loading
     const [isLoading, setIsLoading] = useState(false)
+    const [googleData, setGoogleData] = useState({})
 
     //Estados que redirigen
     const [wasLogged, setWasLogged] = useState(false)
@@ -74,52 +82,140 @@ function Login() {
                 inputs.pin
             )
 
-            //Busca su usuario en firebase
-            usuarioDoc = await firebase.db.collection('usuarios')
-                .where('authId', '==', `${usuario.user.uid}`)
-
-            usuarioDoc.get().then(query => {
-                query.forEach((doc => {
-                    if (doc.exists) {
-                        //Verifica que el usuario sea administrador y que esté activo
-                        if (doc.data().tipoUsuario !== "Administrador") {
-                            //Muestra mensaje de error
-                            setIsLoading(false)
-                            setOpenSnack(true)
-                            setMessage("Usuario no disponible")
-                        } else {
-                            //Si no está activo
-                            if (!doc.data().activo) {
-                                //Muestra mensaje de error
-                                setIsLoading(false)
-                                setOpenSnack(true)
-                                setMessage("Usuario no disponible")
-                            } else {
-                                //Guarda el auth id en el local storage
-                                login(usuario.user.uid, usuario.user.email)
-
-                                //Redirige al panel
-                                setWasLogged(true)
-                            }
-                        }
-                    } else {
-                        //Muestra mensaje de error
-                        setOpenSnack(true)
-                        setMessage("Ocurrió un error.")
-                    }
-                }))
-            })
-
+            //Busca el documento e inicia sesió
+            getDocumentLoginUsingAPI(usuario.user)
         } catch (error) {
             //Para carga
             setIsLoading(false)
 
             //Muestra mensaje de error
             setOpenSnack(true)
-            setMessage(get_error(error.code))
+            setMessage(error.toString())
         }
     }
 
+    //Función para el inicio de sesión con Google
+    const responseGoogle = () => {
+        //Proveedor
+        let provider = new firebase2.auth.GoogleAuthProvider()
+
+        //Abrimos el modal de Google
+        let googleAuth = firebase2.auth()
+            .signInWithPopup(provider)
+            .then(googleAuth => {
+                //Buscamos sus datos en la BD
+                getDocumentLoginUsingAPI(googleAuth.user)
+            }).catch(error => {
+                //Para carga
+                setIsLoading(false)
+
+                //Muestra mensaje de error
+                setOpenSnack(true)
+                setMessage(error.toString())
+            })
+    }
+
+    //Función para traer los datos de facebook
+    const responseFacebook = () => {
+        let provider = new firebase2.auth.FacebookAuthProvider()
+
+        //Abrimos el modal
+        let facebookAuth = firebase2.auth()
+            .signInWithPopup(provider)
+            .then(faceAuth => {
+                //Crea el usuario en la BD
+                getDocumentLoginUsingAPI(faceAuth.user)
+            }).catch(error => {
+                //Para carga
+                setIsLoading(false)
+
+                //Muestra mensaje de error
+                setOpenSnack(true)
+                setMessage(error.toString())
+            })
+    }
+
+    //Buscar documento de usuario por API
+    const getDocumentLoginUsingAPI = (user) => {
+
+        //Inicia la carga
+        setIsLoading(true)
+
+        //Busca su usuario en firebase
+        const usuarioDoc = firebase.db.collection('usuarios')
+            .where('email', '==', `${user.email}`)
+
+        usuarioDoc.get().then(doc => {
+            if (!doc.empty) {
+                //Verifica que el usuario sea administrador y que esté activo
+                if (doc.docs[0].data().tipoUsuario !== "Administrador") {
+                    //Muestra mensaje de error
+                    setIsLoading(false)
+                    setOpenSnack(true)
+                    setMessage("Usuario no disponible")
+                } else {
+                    //Si no está activo
+                    if (!doc.docs[0].data().activo) {
+                        //Muestra mensaje de error
+                        setIsLoading(false)
+                        setOpenSnack(true)
+                        setMessage("Usuario no disponible")
+                    } else {
+                        //Guarda el auth id en el local storage
+                        login(user.uid, user.email)
+
+                        //Redirige al panel
+                        setWasLogged(true)
+                    }
+                }
+            } else {
+                //Creación de cuenta si no existe
+                createUserFromAPI(user)
+            }
+        }).catch(error => {
+            //Para carga
+            setIsLoading(false)
+
+            //Muestra mensaje de error
+            setOpenSnack(true)
+            setMessage(error.toString())
+        })
+    }
+
+    //Función para crear usuario desde API
+    const createUserFromAPI = (user) => {
+        const createUserDoc = firebase.db
+            .collection('usuarios')
+
+        //modifica la contraseña del usuario creado en el auth
+        user.updatePassword(user.uid)
+
+        //Crea el nuevo usuario
+        createUserDoc.add({
+            nombres: user.displayName,
+            apellidos: '',
+            email: user.email,
+            pin: user.uid,
+            tipoUsuario: 'Administrador',
+            gradoEscolar: 'Universidad',
+            pais: 'Mexico',
+            authId: user.uid,
+            avatar: user.photoURL,
+            activo: false
+        }).then(() => {
+            //Para la carga
+            setIsLoading(false)
+
+            //Muestra mensaje de creación de cuenta
+            setOpenSnack(true)
+            setMessage("Tu cuenta ha sido creada, sin embargo, necesita ser habilitada por un administrador")
+        }).catch(error => {
+            setOpenSnack(true)
+            setMessage(error.toString())
+        })
+    }
+
+    //Si la sesión ya está, redirige al panel
     if (getUserUniqueId()) {
         return <Redirect to="/admin" />
     }
@@ -156,9 +252,36 @@ function Login() {
                         <div className={classes.buttonContainer}>
                             {
                                 !isLoading ?
-                                    <Button type="submit" variant="contained" color="primary">
-                                        Ingresar
-                                    </Button> :
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}>
+                                        <Button
+                                            type="submit"
+                                            variant="contained"
+                                            color="primary"
+                                            startIcon={<PersonIcon />}
+                                            style={{ marginBottom: 10 }}>
+                                            Ingresar
+                                        </Button>
+                                        <Button
+                                            onClick={responseGoogle}
+                                            variant="contained"
+                                            color="primary"
+                                            startIcon={<img src={googleIcon} style={{ width: 18 }} alt="google-logo.png" />}
+                                            style={{ marginBottom: 10 }}>
+                                            Ingresar con Google
+                                        </Button>
+                                        <Button
+                                            onClick={responseFacebook}
+                                            variant="contained"
+                                            color="primary"
+                                            startIcon={<FacebookIcon />}
+                                            style={{ marginBottom: 10 }}>
+                                            Ingresar con Facebook
+                                </Button>
+
+                                    </div> :
                                     <CircularProgress color="secondary" />
                             }
                         </div>

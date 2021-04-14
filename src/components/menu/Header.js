@@ -6,7 +6,7 @@ import {
 import { useStyles } from './useStyles'
 
 /**APIs */
-import { logout, getUserEmail } from '../../api/user'
+import { logout } from '../../api/user'
 
 /**Iconos */
 import MenuIcon from '@material-ui/icons/Menu'
@@ -25,7 +25,6 @@ function Header(props) {
                 <Container>
                     <Typography variant="h6">Panel de administración</Typography>
                 </Container>
-                <Typography>{getUserEmail()}</Typography>
                 <Button
                     color="inherit"
                     style={{

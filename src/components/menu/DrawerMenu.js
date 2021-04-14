@@ -6,6 +6,9 @@ import { useStyles } from './useStyles'
 /**Lista */
 import MenuList from './MenuList'
 
+/**APIs */
+import { getUserEmail } from '../../api/user'
+
 function NavMenu(props) {
     const classes = useStyles()
 
@@ -23,6 +26,11 @@ function NavMenu(props) {
                         {/*<Logo className={classes.logoSize} />*/}
                         <Typography style={{ fontSize: '26px' }}>
                             StudyIQ
+                        </Typography>
+                        <Typography style={{
+                            fontSize: 9
+                        }}>
+                            {getUserEmail()}
                         </Typography>
                     </Link>
                 </div>

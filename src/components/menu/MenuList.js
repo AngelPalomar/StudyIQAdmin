@@ -49,14 +49,14 @@ function MenuList(props) {
                         <ListItemText primary="Publicaciones" />
                     </ListItem>
                 </Link>
-                <Link to={'/admin/areas'} className={classes.link}>
+                {/* <Link to={'/admin/areas'} className={classes.link}>
                     <ListItem button onClick={props.close} selected={url === '/admin/areas' ? true : false}>
                         <ListItemIcon>
                             <BookmarkIcon />
                         </ListItemIcon>
                         <ListItemText primary="Areas de enseñanza" />
                     </ListItem>
-                </Link>
+                </Link> */}
             </List>
         </div>
     )

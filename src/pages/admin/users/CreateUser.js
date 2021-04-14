@@ -233,7 +233,7 @@ function CreateUser(props) {
                                         onChange={changeValues}>
                                         <MenuItem value="Administrador">Administrador</MenuItem>
                                         <MenuItem value="Maestro">Maestro</MenuItem>
-                                        <MenuItem value="Estudiante">Estudiante</MenuItem>
+                                        <MenuItem value="Alumno">Alumno</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>

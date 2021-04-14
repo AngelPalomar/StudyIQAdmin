@@ -359,7 +359,7 @@ function UpdateUser(props) {
                                         onChange={changeValues}>
                                         <MenuItem value="Administrador">Administrador</MenuItem>
                                         <MenuItem value="Maestro">Maestro</MenuItem>
-                                        <MenuItem value="Estudiante">Estudiante</MenuItem>
+                                        <MenuItem value="Alumno">Alumno</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -458,9 +458,9 @@ function UpdateUser(props) {
                 </div>
             </div>
             <div style={{
-                height: '400px',
+                height: '300px',
                 width: '100%',
-                marginBlock: 20
+                marginBlock: 10
             }}>
                 <GoogleMap
                     bootstrapURLKeys={{
